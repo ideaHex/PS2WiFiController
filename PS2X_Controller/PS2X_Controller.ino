@@ -36,7 +36,7 @@ byte vibrate = 0;
 
 void setup(){
   system_update_cpu_freq(80);           // set cpu to 80MHZ or 160MHZ !
-  //Serial.begin(57600);
+  Serial.begin(250000);
   delay(300);  //added delay to give wireless ps2 module some time to startup, before configuring it
   setupWiFi();
   //setup pins and settings: GamePad(clock, command, attention, data, Pressures?, Rumble?) check for error
@@ -67,16 +67,16 @@ void setup(){
   type = ps2x.readType(); 
   switch(type) {
     case 0:
-      Serial.print("Unknown Controller type found ");
+      Serial.println("Unknown Controller type found ");
       break;
     case 1:
-      Serial.print("DualShock Controller found ");
+      Serial.println("DualShock Controller found ");
       break;
     case 2:
-      Serial.print("GuitarHero Controller found ");
+      Serial.println("GuitarHero Controller or Analog Controller found ");
       break;
 	  case 3:
-      Serial.print("Wireless Sony DualShock Controller found ");
+      Serial.println("Wireless Sony DualShock Controller found ");
       break;
    }
 }
@@ -85,14 +85,16 @@ void loop() {
 
   if(error == 1) return;  //skip loop if no controller found
 
-  if(type == 2){ //Guitar Hero Controller 
+  if(type == 2){ //Guitar Hero Controller or Analog Controller
+    ps2x.read_gamepad(false, vibrate); //read controller and set large motor to spin at 'vibrate' speed
+    sendMyData();
   }
   else { //DualShock Controller
     ps2x.read_gamepad(false, vibrate); //read controller and set large motor to spin at 'vibrate' speed
     sendMyData();
   }
   checkForIncomingData();
-  delay(10);  // 100 updates per second
+  delay(3);  // up to 470 updates per second
 }
 void setupWiFi(){
   Serial.println("");
@@ -123,7 +125,8 @@ void checkForIncomingData(){
         // read the packet into packetBuffer
         UDP.read(packetBuffer,packetSize);
         Serial.print(F("Recieved: "));
-        Serial.println(packetBuffer);
+        Serial.write(packetBuffer,packetSize);
+        Serial.println("");
         // TODO: process packet here
         }
     }

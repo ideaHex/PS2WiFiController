@@ -30,8 +30,64 @@ void setup(){
 void loop() {
     if(!checkForIncomingData())return;
     if(!udpConnected || !remotePortAddress) return;
-    //DualShock Controller    
-    if(ps2x.Button(PSB_START))         //will be TRUE as long as button is pressed
+    //DualShock Controller
+    demoButtonTest();    
+}
+
+void setupWiFi()
+{
+  WiFi.mode(WIFI_AP);
+  char AP_NameChar[AP_Name.length() + 1];
+  AP_Name.toCharArray(AP_NameChar,AP_Name.length() + 1);
+
+  int channel = random(1,13 + 1);               // have to add 1 or will be 1 - 12
+  IPAddress subnet(255, 255, 255, 0);
+  IPAddress apIP(192, 168, 1, 1);
+  WiFi.softAPConfig(apIP, apIP, subnet);
+  //wifi_set_phy_mode(PHY_MODE_11N);
+  WiFi.softAP(AP_NameChar, password , channel , 0 );
+  Serial.println("");
+  if(UDP.begin(localPort) == 1){
+      Serial.println(F("Ready for Controller to connect"));
+      udpConnected = true;
+    }
+  else{
+      Serial.println(F("Connection failed"));
+      }
+}
+
+boolean checkForIncomingData(){
+  if(udpConnected){
+    // if there’s data available, read a packet
+    int packetSize = UDP.parsePacket();
+    if (packetSize){
+      char packetBuffer[packetSize];
+      boolean firstPacketSkipped = remotePortAddress;
+      if (!remotePortAddress || remotePortAddress != UDP.remotePort())Serial.println("Controller Connected, Port: " + String(UDP.remotePort()));
+      if(packetSize) // have data
+      {
+        remoteIPAddress = UDP.remoteIP(); // update client details
+        remotePortAddress = UDP.remotePort();
+        // read the packet into packetBuffer
+        UDP.read(packetBuffer,packetSize);
+        // send to library
+        for (int a = 0; a < 21; a++){
+          ps2x.PS2data[a] = packetBuffer[a];
+          }
+        ps2x.last_buttons = ps2x.buttons; //store the previous buttons states
+        ps2x.buttons = (ps2x.PS2data[4] << 8) + ps2x.PS2data[3]; //store as one value for multiple functions
+        //Serial.print(F("Free Ram: "));
+        //Serial.println(system_get_free_heap_size());
+        PPS++;
+        if (!firstPacketSkipped)return false; // to set buttons to default skip first packet
+        return true;
+        }
+    }
+  }
+  return false;
+}
+void demoButtonTest(){
+  if(ps2x.Button(PSB_START))         //will be TRUE as long as button is pressed
       Serial.println("Start is being held");
     if(ps2x.Button(PSB_SELECT))
       Serial.println("Select is being held");      
@@ -67,8 +123,12 @@ void loop() {
         Serial.println("Triangle pressed");        
     }
 
-    if(ps2x.ButtonPressed(PSB_CIRCLE))               //will be TRUE if button was JUST pressed
+    if(ps2x.ButtonPressed(PSB_CIRCLE)){               //will be TRUE if button was JUST pressed
       Serial.println("Circle just pressed");
+      UDP.beginPacket(remoteIPAddress,remotePortAddress);
+      UDP.print("Circle Pressed");
+      UDP.endPacket();
+    }
     if(ps2x.NewButtonState(PSB_CROSS))               //will be TRUE if button was JUST pressed OR released
       Serial.println("X just changed");
     if(ps2x.ButtonReleased(PSB_SQUARE))              //will be TRUE if button was JUST released
@@ -84,57 +144,6 @@ void loop() {
       Serial.print(",");
       Serial.println(ps2x.Analog(PSS_RX), DEC); 
     }
-}
-
-void setupWiFi()
-{
-  WiFi.mode(WIFI_AP);
-  char AP_NameChar[AP_Name.length() + 1];
-  AP_Name.toCharArray(AP_NameChar,AP_Name.length() + 1);
-
-  int channel = random(1,13 + 1);               // have to add 1 or will be 1 - 12
-  IPAddress subnet(255, 255, 255, 0);
-  IPAddress apIP(192, 168, 1, 1);
-  WiFi.softAPConfig(apIP, apIP, subnet);
-  //wifi_set_phy_mode(PHY_MODE_11N);
-  WiFi.softAP(AP_NameChar, password , channel , 0 );
-  Serial.println("");
-  if(UDP.begin(localPort) == 1){
-      Serial.println(F("Ready for Controller to connect"));
-      udpConnected = true;
-    }
-  else{
-      Serial.println(F("Connection failed"));
-      }
-}
-
-boolean checkForIncomingData(){
-  if(udpConnected){
-    // if there’s data available, read a packet
-    int packetSize = UDP.parsePacket();
-    if (packetSize){
-      char packetBuffer[packetSize];
-      if (!remotePortAddress || remotePortAddress != UDP.remotePort())Serial.println("Controller Connected, Port: " + String(UDP.remotePort()));
-      if(packetSize) // have data
-      {
-        remoteIPAddress = UDP.remoteIP(); // update client details
-        remotePortAddress = UDP.remotePort();
-        // read the packet into packetBuffer
-        UDP.read(packetBuffer,packetSize);
-        // send to library
-        for (int a = 0; a < 21; a++){
-          ps2x.PS2data[a] = packetBuffer[a];
-          }
-        ps2x.last_buttons = ps2x.buttons; //store the previous buttons states
-        ps2x.buttons = (ps2x.PS2data[4] << 8) + ps2x.PS2data[3]; //store as one value for multiple functions
-        //Serial.print(F("Free Ram: "));
-        //Serial.println(system_get_free_heap_size());
-        PPS++;
-        return true;
-        }
-    }
-  }
-  return false;
 }
 void outPutPPS(){
   Serial.println("Packets Per Second: " + String(PPS / 5));

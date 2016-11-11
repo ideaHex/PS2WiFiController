@@ -1,5 +1,5 @@
 /******************************************************************
-*  Super amazing PS2 controller Arduino Library v1.8
+*  Super amazing PS2 controller Arduino Library v2.0
 *		details and example sketch: 
 *			http://www.billporter.info/?p=240
 *
@@ -12,6 +12,7 @@
 *	 Contributers:
 *		Eric Wetzel (thewetzel@gmail.com)
 *		Kurt Eckhardt
+*   Tilden Groves
 *
 *  Lib version history
 *    0.1 made into library, added analog stick support. 
@@ -60,6 +61,8 @@
 *    1.9
 *       Kurt - Added detection and recovery from dropping from analog mode, plus
 *       integreated Chipkit (pic32mx...) support
+*    2.0
+*       Dropped arduino and pic 32 support and ported to ESP8266
 *
 *
 *
